@@ -27,7 +27,8 @@ class Item(ItemBase):
     class Config:
         orm_mode = True
 
-class Loan(Item):
+class Loan(LoanBase):
+    id: int
 
     class Config:
         orm_mode = True

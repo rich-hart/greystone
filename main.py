@@ -59,3 +59,8 @@ def create_loan_for_user(
 def read_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     items = crud.get_items(db, skip=skip, limit=limit)
     return items
+
+@app.get("/loans/", response_model=List[schemas.Loan])
+def read_loans(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    loans = crud.get_loans(db, skip=skip, limit=limit)
+    return loans
