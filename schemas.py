@@ -7,8 +7,16 @@ class ItemBase(BaseModel):
     title: str
     description: Union[str, None] = None
 
+class LoanBase(ItemBase):
+    amount: float
+    annual_interest_rate: float
+    loan_term_in_months: float
+
 
 class ItemCreate(ItemBase):
+    pass
+
+class LoanCreate(LoanBase):
     pass
 
 
@@ -18,6 +26,12 @@ class Item(ItemBase):
 
     class Config:
         orm_mode = True
+
+class Loan(Item):
+
+    class Config:
+        orm_mode = True
+
 
 
 class UserBase(BaseModel):

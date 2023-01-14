@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Float, Numeric
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -25,3 +25,11 @@ class Item(Base):
 
     owner = relationship("User", back_populates="items")
 
+class Loan(Item):
+    __tablename__ = 'loans'
+    __mapper_args__ = {'polymorphic_identity': 'loan'}
+
+    id = Column(Integer, ForeignKey('items.id'), primary_key=True)
+    amount = Column(Numeric(precision=19,scale=4))
+    annual_interest_rate = Column(Float)
+    loan_term_in_months = Column(Integer)

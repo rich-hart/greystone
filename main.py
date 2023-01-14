@@ -48,6 +48,12 @@ def create_item_for_user(
 ):
     return crud.create_user_item(db=db, item=item, user_id=user_id)
 
+@app.post("/users/{user_id}/loans/", response_model=schemas.Loan)
+def create_loan_for_user(
+    user_id: int, loan: schemas.LoanCreate, db: Session = Depends(get_db)
+):
+    return crud.create_user_loan(db=db, loan=loan, user_id=user_id)
+
 
 @app.get("/items/", response_model=List[schemas.Item])
 def read_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
