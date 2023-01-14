@@ -1,6 +1,8 @@
 from typing import List
 
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from . import crud, models, schemas
@@ -64,3 +66,33 @@ def read_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
 def read_loans(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     loans = crud.get_loans(db, skip=skip, limit=limit)
     return loans
+
+@app.get("/loans/{loan_id}", response_model=schemas.Loan)
+def read_user(loan_id: int, db: Session = Depends(get_db)):
+    db_loan = crud.get_loan(db, loan_id=loan_id)
+    if db_loan is None:
+        raise HTTPException(status_code=404, detail="Loan not found")
+    return db_loan
+
+@app.get("/loans/{loan_id}/schedule/", response_model=schemas.Loan)
+def calculate_schedule_for_loan(loan_id: int, db: Session = Depends(get_db)):
+    db_loan = crud.get_loan(db, loan_id=loan_id)
+    schedule = []
+
+    P = float(db_loan.amount)
+    r = float(db_loan.annual_interest_rate/(100*12))
+    n = int(db_loan.loan_term_in_months)
+    A = P * (r*(1+r)**n)/ (((1+r)**n)-1)
+
+    for i in range(db_loan.loan_term_in_months):
+        month = i
+        remaining_balance = P-A*i
+        monthly_payment = min(A, remaining_balance)
+        schedule.append({
+            "month": month,
+            "remaining_balance": f"${remaining_balance:.2f}",
+            "monthly_payment": f"${monthly_payment:.2f}",
+        })
+    content = jsonable_encoder(schedule)
+    return JSONResponse(content=content)
+
