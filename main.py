@@ -1,5 +1,7 @@
 from typing import List
 
+import numpy as np
+
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
@@ -75,24 +77,15 @@ def read_user(loan_id: int, db: Session = Depends(get_db)):
     return db_loan
 
 @app.get("/loans/{loan_id}/schedule/", response_model=schemas.Loan)
-def calculate_schedule_for_loan(loan_id: int, db: Session = Depends(get_db)):
-    db_loan = crud.get_loan(db, loan_id=loan_id)
-    schedule = []
-
-    P = float(db_loan.amount)
-    r = float(db_loan.annual_interest_rate/(100*12))
-    n = int(db_loan.loan_term_in_months)
-    A = P * (r*(1+r)**n)/ (((1+r)**n)-1)
-
-    for i in range(db_loan.loan_term_in_months):
-        month = i
-        remaining_balance = P-A*i
-        monthly_payment = min(A, remaining_balance)
-        schedule.append({
-            "month": month,
-            "remaining_balance": f"${remaining_balance:.2f}",
-            "monthly_payment": f"${monthly_payment:.2f}",
+def get_schedules_for_loan(loan_id: int, db: Session = Depends(get_db)):
+    db_schedules = crud.get_schedules_by_loan(db, loan_id=loan_id)
+    formatted_schedules = []
+    for s in db_schedules:
+        formatted_schedules.append({
+            'month': s.month,
+            'remaining_balance': f"${s.remaining_balance:.2f}",
+            'monthly_payment': f"${s.monthly_payment:.2f}",
         })
-    content = jsonable_encoder(schedule)
+    content = jsonable_encoder(formatted_schedules)
     return JSONResponse(content=content)
 

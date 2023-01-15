@@ -33,3 +33,12 @@ class Loan(Item):
     amount = Column(Numeric(precision=19,scale=4))
     annual_interest_rate = Column(Float)
     loan_term_in_months = Column(Integer)
+
+class Schedule(Base):
+    __tablename__ = "schedules"
+
+    id = Column(Integer, primary_key=True, index=True)
+    loan_id = Column(Integer, ForeignKey("loans.id"))
+    month = Column(Integer)
+    remaining_balance = Column(Numeric(precision=19,scale=4))
+    monthly_payment = Column(Numeric(precision=19,scale=4))

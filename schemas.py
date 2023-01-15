@@ -16,6 +16,7 @@ class LoanBase(ItemBase):
 class ItemCreate(ItemBase):
     pass
 
+
 class LoanCreate(LoanBase):
     pass
 
