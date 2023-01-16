@@ -2,18 +2,21 @@ from typing import List
 
 import numpy as np
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from . import crud, models, schemas, utils
 from .database import SessionLocal, engine
 
+
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # Dependency
 def get_db():
@@ -22,6 +25,43 @@ def get_db():
         yield db
     finally:
         db.close()
+
+def fake_hash_password(password: str):
+    return password + "notreallyhashed"
+
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    user = crud.get_user_by_email(next(get_db()),token)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user
+
+async def get_current_active_user(current_user: models.User = Depends(get_current_user)):
+    if current_user.is_active:
+        return current_user
+    raise HTTPException(status_code=400, detail="Inactive user")
+
+
+@app.post("/token")
+async def login(db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()):
+    user = crud.get_user_by_email(db,form_data.username)
+    if not user:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    hashed_password = fake_hash_password(form_data.password)
+    if not hashed_password == user.hashed_password:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+
+    return {"access_token": user.email, "token_type": "bearer"}
+
+
+@app.get("/users/me")
+async def read_users_me(current_user: models.User = Depends(get_current_active_user)):
+    return current_user
+
 
 
 @app.post("/users/", response_model=schemas.User)
@@ -72,15 +112,31 @@ def read_loans(user_id : int = 0, skip: int = 0, limit: int = 100, db: Session =
         loans = crud.get_loans(db, skip=skip, limit=limit)
     return loans
 
+
+def has_access(db, loan_id, user_id):
+    db_item = crud.get_item(db, item_id=loan_id)
+    current_members = db.query(models.Member).filter(models.Member.loan_id == loan_id)
+    for member in current_members:
+        if member.user_id == user_id:
+            return True
+    return False
+
+
 @app.get("/loans/{loan_id}", response_model=schemas.Loan)
-def read_user(loan_id: int, db: Session = Depends(get_db)):
+def read_loan(loan_id: int,  db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
     db_loan = crud.get_loan(db, loan_id=loan_id)
     if db_loan is None:
         raise HTTPException(status_code=404, detail="Loan not found")
+    if not has_access(db, loan_id, current_user.id):
+        raise HTTPException(status_code=404, detail="Not authorized to view loan.")
+
     return db_loan
 
+
 @app.get("/loans/{loan_id}/schedule/")
-def get_schedules_for_loan(loan_id: int, db: Session = Depends(get_db)):
+def get_schedules_for_loan(loan_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
+    if not has_access(db, loan_id, current_user.id):
+        raise HTTPException(status_code=404, detail="Not authorized to view loan.")
     db_schedules = crud.get_schedules_by_loan(db, loan_id=loan_id)
     formatted_schedules = []
     for s in db_schedules:
@@ -94,7 +150,10 @@ def get_schedules_for_loan(loan_id: int, db: Session = Depends(get_db)):
 
 
 @app.get("/loans/{loan_id}/summary/")
-def get_summary_for_loan(loan_id: int, month: int = 0,  db: Session = Depends(get_db)):
+def get_summary_for_loan(loan_id: int, month: int = 0,  db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
+    if not has_access(db, loan_id, current_user.id):
+        raise HTTPException(status_code=404, detail="Not authorized to view loan.")
+
     db_schedules = crud.get_schedules_by_loan(db, loan_id=loan_id)
     db_loan = crud.get_loan(db, loan_id=loan_id)
     summary = {
@@ -119,7 +178,10 @@ def get_summary_for_loan(loan_id: int, month: int = 0,  db: Session = Depends(ge
     return JSONResponse(content=content)
 
 @app.post("/loans/{loan_id}/share/", response_model=schemas.Member)
-def share_loan_with_user(loan_id: int, member: schemas.MemberCreate,  db: Session = Depends(get_db)):
+def share_loan_with_user(loan_id: int, member: schemas.MemberCreate,  db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
+    db_item = crud.get_item(db, item_id=loan_id)
+    if not db_item.owner_id == current_user.id:
+        raise HTTPException(status_code=404, detail="Not authorized to share loan.")
     db_member = crud.create_loan_member(db, member=member, loan_id=loan_id)
     return db_member
 

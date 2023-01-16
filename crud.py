@@ -7,6 +7,8 @@ from . import utils
 def get_user(db: Session, user_id: int):
     return db.query(models.User).filter(models.User.id == user_id).first()
 
+def get_item(db: Session, item_id: int):
+    return db.query(models.Item).filter(models.Item.id == item_id).first()
 
 def get_loan(db: Session, loan_id: int):
     return db.query(models.Loan).filter(models.Loan.id == loan_id).first()
@@ -55,10 +57,10 @@ def create_user_item(db: Session, item: schemas.ItemCreate, user_id: int):
 
 def create_loan_member(db: Session, member: schemas.MemberCreate, loan_id: int):
     member_data = member.dict()
-    db_loan = db.query(models.Loan).get(loan_id)
-    member_ids = [m.user_id for m in db_loan.members]
+    current_members = db.query(models.Member).filter(models.Member.loan_id == loan_id)
+    member_ids = [m.user_id for m in current_members]
     if member_data['user_id'] in member_ids:
-        db_member = db.query(models.Member).filter(models.Member.user_id == member_data['user_id'], models.Member.loan_id == db_loan.id).first()
+        db_member = db.query(models.Member).filter(models.Member.user_id == member_data['user_id'], models.Member.loan_id == loan_id).first()
         return db_member
     db_member = models.Member(**member_data, loan_id=loan_id)
     db.add(db_member)
