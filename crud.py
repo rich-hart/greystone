@@ -53,12 +53,30 @@ def create_user_item(db: Session, item: schemas.ItemCreate, user_id: int):
     db.refresh(db_item)
     return db_item
 
+def create_loan_member(db: Session, member: schemas.MemberCreate, loan_id: int):
+    member_data = member.dict()
+    db_loan = db.query(models.Loan).get(loan_id)
+    member_ids = [m.user_id for m in db_loan.members]
+    if member_data['user_id'] in member_ids:
+        db_member = db.query(models.Member).filter(models.Member.user_id == member_data['user_id'], models.Member.loan_id == db_loan.id).first()
+        return db_member
+    db_member = models.Member(**member_data, loan_id=loan_id)
+    db.add(db_member)
+    db.commit()
+    db.refresh(db_member)
+    return db_member
+
+
 def create_user_loan(db: Session, loan: schemas.LoanCreate, user_id: int):
     loan_data = loan.dict()
     db_loan = models.Loan(**loan.dict(), owner_id=user_id)
     db.add(db_loan)
     db.commit()
     db.refresh(db_loan)
+    db_member = models.Member(user_id=user_id, loan_id=db_loan.id)
+    db.add(db_member)
+    db.commit()
+    db.refresh(db_member)
 
     P = float(db_loan.amount)
     r = float(db_loan.annual_interest_rate/(100*12))

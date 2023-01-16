@@ -34,6 +34,18 @@ class Loan(Item):
     annual_interest_rate = Column(Float)
     loan_term_in_months = Column(Integer)
 
+    members = relationship("Member", back_populates="loan")
+
+class Member(Base):
+    __tablename__ = "members"
+
+    id = Column(Integer, primary_key=True, index=True)
+    loan_id = Column(Integer, ForeignKey("loans.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))
+
+    loan = relationship("Loan", back_populates="members")
+
+
 class Schedule(Base):
     __tablename__ = "schedules"
 

@@ -118,3 +118,8 @@ def get_summary_for_loan(loan_id: int, month: int = 0,  db: Session = Depends(ge
     content = jsonable_encoder(summary)
     return JSONResponse(content=content)
 
+@app.post("/loans/{loan_id}/share/", response_model=schemas.Member)
+def share_loan_with_user(loan_id: int, member: schemas.MemberCreate,  db: Session = Depends(get_db)):
+    db_member = crud.create_loan_member(db, member=member, loan_id=loan_id)
+    return db_member
+
