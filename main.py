@@ -96,7 +96,7 @@ def get_summary_for_loan(loan_id: int, month: int = 0,  db: Session = Depends(ge
     db_loan = crud.get_loan(db, loan_id=loan_id)
     summary = {
         'month': month,
-        "current_principal balance": float(db_schedules[month].remaining_balance),
+        "current_principal_balance": float(db_schedules[month].remaining_balance),
         'aggregate_principal': 0.0,
         'aggregate_interest': 0.0,
     }
@@ -109,7 +109,9 @@ def get_summary_for_loan(loan_id: int, month: int = 0,  db: Session = Depends(ge
         principal = float(db_schedules[i].monthly_payment) - interest
         summary['aggregate_interest'] = summary['aggregate_interest'] + interest
         summary['aggregate_principal'] = summary['aggregate_principal'] + principal
-
+    summary['current_principal_balance'] = f"${summary['current_principal_balance']:.2f}"
+    summary['aggregate_principal'] = f"${summary['aggregate_principal']:.2f}"
+    summary['aggregate_interest'] = f"${summary['aggregate_interest']:.2f}"
     content = jsonable_encoder(summary)
     return JSONResponse(content=content)
 
