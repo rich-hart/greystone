@@ -39,6 +39,13 @@ def get_items(db: Session, skip: int = 0, limit: int = 100):
 def get_loans(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Loan).offset(skip).limit(limit).all()
 
+def get_loans_by_owner(db: Session, owner_id):
+    items = db.query(models.Item).filter(models.Item.owner_id == owner_id)
+    loans = []
+    for i in range(items.count()):
+        loans.append(db.query(models.Loan).get(items[i].id))
+    return loans
+
 def create_user_item(db: Session, item: schemas.ItemCreate, user_id: int):
     db_item = models.Item(**item.dict(), owner_id=user_id)
     db.add(db_item)

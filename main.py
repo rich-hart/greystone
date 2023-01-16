@@ -65,8 +65,11 @@ def read_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return items
 
 @app.get("/loans/", response_model=List[schemas.Loan])
-def read_loans(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    loans = crud.get_loans(db, skip=skip, limit=limit)
+def read_loans(user_id : int = 0, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    if user_id:
+        loans = crud.get_loans_by_owner(db, user_id)
+    else:
+        loans = crud.get_loans(db, skip=skip, limit=limit)
     return loans
 
 @app.get("/loans/{loan_id}", response_model=schemas.Loan)
