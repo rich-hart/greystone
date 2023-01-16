@@ -13,7 +13,7 @@ def get_loan(db: Session, loan_id: int):
 
 
 def get_schedules_by_loan(db: Session, loan_id: int):
-    return db.query(models.Schedule).filter(models.Schedule.loan_id == loan_id)
+    return db.query(models.Schedule).filter(models.Schedule.loan_id == loan_id).order_by(models.Schedule.month)
 
 
 def get_user_by_email(db: Session, email: str):
@@ -53,9 +53,9 @@ def create_user_loan(db: Session, loan: schemas.LoanCreate, user_id: int):
     db.commit()
     db.refresh(db_loan)
 
-    P = loan_data['amount']
-    r = loan_data['annual_interest_rate']/(100*12)
-    n = int(loan_data['loan_term_in_months'])
+    P = float(db_loan.amount)
+    r = float(db_loan.annual_interest_rate/(100*12))
+    n = int(db_loan.loan_term_in_months)
     A = utils.amortize_loan(P,r,n)
     
     schedules = [
@@ -65,10 +65,10 @@ def create_user_loan(db: Session, loan: schemas.LoanCreate, user_id: int):
             "monthly_payment": A,
         }
     ]
-    for i in range(1,n):
+    for i in range(1,db_loan.loan_term_in_months):
         month = i
-        remaining_balance = schedules[i-1]["remaining_balance"] * (1+r) - A
-        monthly_payment = min(A,remaining_balance)
+        remaining_balance = schedules[i-1]['remaining_balance']*(1+r)-A
+        monthly_payment = A
         schedules.append({
             "month": month,
             "remaining_balance": remaining_balance,

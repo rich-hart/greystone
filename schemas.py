@@ -12,6 +12,11 @@ class LoanBase(ItemBase):
     annual_interest_rate: float
     loan_term_in_months: float
 
+class ScheduleBase(BaseModel):
+    month: int
+    remaining_balance: float
+    monthly_payment: float
+
 
 class ItemCreate(ItemBase):
     pass
@@ -30,6 +35,14 @@ class Item(ItemBase):
 
 class Loan(LoanBase):
     id: int
+
+    class Config:
+        orm_mode = True
+
+
+class Schedule(ScheduleBase):
+    id: int
+    loan_id: int
 
     class Config:
         orm_mode = True

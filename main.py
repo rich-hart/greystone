@@ -7,7 +7,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from . import crud, models, schemas
+from . import crud, models, schemas, utils
 from .database import SessionLocal, engine
 
 models.Base.metadata.create_all(bind=engine)
@@ -76,7 +76,7 @@ def read_user(loan_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Loan not found")
     return db_loan
 
-@app.get("/loans/{loan_id}/schedule/", response_model=schemas.Loan)
+@app.get("/loans/{loan_id}/schedule/")
 def get_schedules_for_loan(loan_id: int, db: Session = Depends(get_db)):
     db_schedules = crud.get_schedules_by_loan(db, loan_id=loan_id)
     formatted_schedules = []
@@ -87,5 +87,29 @@ def get_schedules_for_loan(loan_id: int, db: Session = Depends(get_db)):
             'monthly_payment': f"${s.monthly_payment:.2f}",
         })
     content = jsonable_encoder(formatted_schedules)
+    return JSONResponse(content=content)
+
+
+@app.get("/loans/{loan_id}/summary/")
+def get_summary_for_loan(loan_id: int, month: int = 0,  db: Session = Depends(get_db)):
+    db_schedules = crud.get_schedules_by_loan(db, loan_id=loan_id)
+    db_loan = crud.get_loan(db, loan_id=loan_id)
+    summary = {
+        'month': month,
+        "current_principal balance": float(db_schedules[month].remaining_balance),
+        'aggregate_principal': 0.0,
+        'aggregate_interest': 0.0,
+    }
+
+    for i in range(month):
+        P = float(db_schedules[i].remaining_balance)
+        r = float(db_loan.annual_interest_rate/(100))
+        n = 12
+        interest = utils.interest_payment(P,r,n)
+        principal = float(db_schedules[i].monthly_payment) - interest
+        summary['aggregate_interest'] = summary['aggregate_interest'] + interest
+        summary['aggregate_principal'] = summary['aggregate_principal'] + principal
+
+    content = jsonable_encoder(summary)
     return JSONResponse(content=content)
 
