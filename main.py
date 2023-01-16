@@ -1,6 +1,5 @@
 from typing import List
 
-import numpy as np
 
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.encoders import jsonable_encoder
@@ -106,6 +105,7 @@ def read_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
 
 @app.get("/loans/", response_model=List[schemas.Loan])
 def read_loans(user_id : int = 0, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    """Note"""
     if user_id:
         loans = crud.get_loans_by_owner(db, user_id)
     else:

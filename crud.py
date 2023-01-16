@@ -1,5 +1,4 @@
 from sqlalchemy.orm import Session
-import numpy as np
 
 from . import models, schemas
 from . import utils
